@@ -43,7 +43,7 @@ class SerializationTool(object):
             if mode == "copy":
                 parameter.data.copy_(serialized_parameters_dict[name])
             elif mode == "add":
-                parameter.data.add_(serialized_parameters_dict[name])
+                parameter.data.add_(serialized_parameters_dict[name].to(parameter.data.device))
             else:
                 raise ValueError(
                     "Invalid deserialize mode {}, require \"copy\" or \"add\" "

@@ -82,7 +82,7 @@ class CTRTrainer(object):
                     print("Current lr : {}".format(self.optimizer.state_dict()['param_groups'][0]['lr']))
                 self.scheduler.step()  #update lr in epoch level by scheduler
             if val_dataloader:
-                auc = self.evaluate(self.model, val_dataloader)
+                auc = self.evaluate(val_dataloader)
                 print('epoch:', epoch_i, 'validation: auc:', auc)
                 if self.early_stopper is not None and \
                     self.early_stopper.stop_training(auc, self.model.state_dict()):
@@ -91,25 +91,25 @@ class CTRTrainer(object):
                     break
         #torch.save(self.model.state_dict(), os.path.join(self.model_path, "model.pth"))  #save best auc model
 
-    def evaluate(self, model, data_loader):
-        model.eval()
+    def evaluate(self, data_loader):
+        self.model.eval()
         targets, predicts = list(), list()
         with torch.no_grad():
             tk0 = tqdm.tqdm(data_loader, desc="validation", smoothing=0, mininterval=1.0)
             for i, data_dict in enumerate(tk0):
                 data_dict = {k: v.to(self.device) for k, v in data_dict.items()}
-                y_pred, y = model(data_dict)
+                y_pred, y = self.model(data_dict)
                 targets.extend(y.tolist())
                 predicts.extend(y_pred.tolist())
         return self.evaluate_fn(targets, predicts)
 
-    def predict(self, model, data_loader):
-        model.eval()
+    def predict(self, data_loader):
+        self.model.eval()
         predicts = list()
         with torch.no_grad():
             tk0 = tqdm.tqdm(data_loader, desc="predict", smoothing=0, mininterval=1.0)
             for i, data_dict in enumerate(tk0):
                 data_dict = {k: v.to(self.device) for k, v in data_dict.items()}
-                y_pred, y = model(data_dict)
+                y_pred, y = self.model(data_dict)
                 predicts.extend(y_pred.tolist())
         return predicts

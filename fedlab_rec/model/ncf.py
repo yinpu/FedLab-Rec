@@ -27,7 +27,7 @@ class NCF(torch.nn.Module):
         mlp_output = self.mlp_forward(user_id, item_id)
         pred = torch.sigmoid(self.output_logits(torch.cat([gmf_product, mlp_output], dim=1)).view(-1))
         if self.label_col in data_dict:
-            y = data_dict[self.label_col].long()
+            y = data_dict[self.label_col].float()
         else:
             y = None
         return pred, y
@@ -45,7 +45,7 @@ class NCF(torch.nn.Module):
 
     def cal_loss(self, data_dict):
         pred, y = self.forward(data_dict)
-        return self.loss_fct(y, pred)
+        return self.loss_fct(pred, y)
 
 if __name__ == "__main__":
     ncf = NCF(10, 10)

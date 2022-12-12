@@ -36,11 +36,12 @@ class NCFServer(ServerHandler):
     def load(self, payloads):
         weight = 1/len(payloads)
         for index, payload in enumerate(payloads):
-            payload =  {k:weight*deepcopy(v) for k, v in payload}
+            payload =  {k:weight*deepcopy(v) for k, v in payload.items()}
             if index == 0:
                 SerializationTool.deserialize_model(self.model, payload, mode="copy")
             else:
                 SerializationTool.deserialize_model(self.model, payload, mode="add")
+        self.round += 1
     
     
     
