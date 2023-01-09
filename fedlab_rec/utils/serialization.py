@@ -1,4 +1,5 @@
 import torch
+from copy import deepcopy
 
 
 class SerializationTool(object):
@@ -14,7 +15,7 @@ class SerializationTool(object):
         grad_dict = {}
         for name, param in model.named_parameters():
             if SerializationTool.jug_need_param(name, include_names):
-                grad_dict[name] = param.grad.data.cpu()
+                grad_dict[name] = deepcopy(param.grad.data.cpu())
         return grad_dict
 
     @staticmethod
@@ -22,7 +23,7 @@ class SerializationTool(object):
         grad_dict = {}
         for name, param in model.named_parameters():
             if SerializationTool.jug_need_param(name, include_names):
-                grad_dict[name] = param.data.cpu()
+                grad_dict[name] = deepcopy(param.data.cpu())
         return grad_dict
 
     @staticmethod

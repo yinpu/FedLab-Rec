@@ -6,27 +6,24 @@ import random
 from copy import deepcopy
 
 class NCFServer(ServerHandler):
-    def __init__(self, model, cuda, device, num_clients, global_round, include_names, sample_ratio):
+    def __init__(self, model, cuda, device, num_clients, global_round, include_names, sample_clients_num):
         super().__init__(model, cuda, device)
         self.num_clients = num_clients
         self.global_round = global_round
         self.include_names = include_names
-        self.sample_ratio = sample_ratio
+        self.sample_clients_num = sample_clients_num
         self.round = 0
         
     @property
     def if_stop(self):
         return self.round >= self.global_round
 
-    @property
-    def num_clients_per_round(self):
-        return max(1, int(self.sample_ratio * self.num_clients))
     
     def sample_clients(self):
         """Return a list of client rank indices selected randomly. The client ID is from ``0`` to
         ``self.num_clients -1``."""
         selection = random.sample(range(self.num_clients),
-                                  self.num_clients_per_round)
+                                  self.sample_clients_num)
         return sorted(selection)
     
     @property

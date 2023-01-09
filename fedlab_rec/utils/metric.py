@@ -95,86 +95,118 @@ def precision_score(y_true, y_pred, topKs=None):
 
 
 def topk_metrics(y_true, y_pred, topKs=None):
-	"""choice topk metrics and compute it
-	the metrics contains 'ndcg', 'mrr', 'recall', 'precision' and 'hit'
-	Args:
-		y_true (dict): {userid, item_ids}, the key is user id and the value is the list that contains the items the user interacted
-		y_pred (dict): {userid, item_ids}, the key is user id and the value is the list that contains the items recommended  
-		topKs (list or tuple): if you want to get top5 and top10, topKs=(5, 10)
-	Return:
-		results (dict): {metric_name: metric_values}, it contains five metrics, 'ndcg', 'recall', 'mrr', 'hit', 'precision'
-	"""
-	if topKs is None:
-		topKs = [5]
-	assert len(y_true) == len(y_pred)
+    # 获取预测值从大到小排序的索引
+    sorted_indices = np.argsort(np.array(y_pred))
+    # 获取正样本的索引
+    y_true = [idx for idx, score in enumerate(y_true) if score>0]
+    # 设置默认的topKs
+    if topKs is None:
+        topKs = [10]
+    # 计算NDCG和HR
+    ndcgs = []
+    hrs = []
+    for k in topKs:
+        # 获取前k个预测值
+        top_k_pred = sorted_indices[:k]
+        # 计算HR
+        hr = len(set(top_k_pred) & set(y_true)) / len(y_true)
+        hrs.append(hr)
+        # 计算NDCG
+        dcg = 0.0
+        for i, idx in enumerate(top_k_pred):
+            if idx in y_true:
+                dcg += 1 / np.log2(i+2)
+        idcg = 0.0
+        for i, idx in enumerate(y_true):
+            idcg += 1 / np.log2(i+2)
+        ndcg = dcg / idcg
+        ndcgs.append(ndcg)
+    return ndcgs, hrs
 
-	if not isinstance(topKs, (tuple, list)):
-		raise ValueError('topKs wrong, it should be tuple or list')
 	
-	pred_array = []
-	true_array = []
-	for u in y_true.keys():
-		pred_array.append(y_pred[u])
-		true_array.append(y_true[u])
-	ndcg_result = []
-	mrr_result = []
-	hit_result = []
-	precision_result = []
-	recall_result = []
-	for idx in range(len(topKs)):
-		ndcgs = 0
-		mrrs = 0
-		hits = 0
-		precisions = 0
-		recalls = 0
-		gts = 0
-		for i in range(len(true_array)):
-			if len(true_array[i]) != 0:
-				mrr_tmp = 0
-				mrr_flag = True
-				hit_tmp = 0
-				dcg_tmp = 0
-				idcg_tmp = 0
-				for j in range(topKs[idx]):
-					if pred_array[i][j] in true_array[i]:
-						hit_tmp += 1.
-						if mrr_flag:
-							mrr_flag = False
-							mrr_tmp = 1. / (1 + j)
-						dcg_tmp += 1. / (np.log2(j + 2))
-					if j < len(true_array[i]):
-						idcg_tmp += 1. / (np.log2(j + 2))
-				gts += len(true_array[i])
-				hits += hit_tmp
-				mrrs += mrr_tmp
-				recalls += hit_tmp / len(true_array[i])
-				precisions += hit_tmp / topKs[idx]
-				if idcg_tmp != 0:
-					ndcgs += dcg_tmp / idcg_tmp
-		hit_result.append(round(hits / gts, 4))
-		mrr_result.append(round(mrrs / len(pred_array), 4))
-		recall_result.append(round(recalls / len(pred_array), 4))
-		precision_result.append(round(precisions / len(pred_array), 4))
-		ndcg_result.append(round(ndcgs / len(pred_array), 4))
 
-	results = defaultdict(list)
-	for idx in range(len(topKs)):
 
-		output = f'NDCG@{topKs[idx]}: {ndcg_result[idx]}'
-		results['NDCG'].append(output)
+# def topk_metrics(y_true, y_pred, topKs=None):
+# 	"""choice topk metrics and compute it
+# 	the metrics contains 'ndcg', 'mrr', 'recall', 'precision' and 'hit'
+# 	Args:
+# 		y_true (dict): {userid, item_ids}, the key is user id and the value is the list that contains the items the user interacted
+# 		y_pred (dict): {userid, item_ids}, the key is user id and the value is the list that contains the items recommended  
+# 		topKs (list or tuple): if you want to get top5 and top10, topKs=(5, 10)
+# 	Return:
+# 		results (dict): {metric_name: metric_values}, it contains five metrics, 'ndcg', 'recall', 'mrr', 'hit', 'precision'
+# 	"""
+# 	if topKs is None:
+# 		topKs = [5]
+# 	assert len(y_true) == len(y_pred)
 
-		output = f'MRR@{topKs[idx]}: {mrr_result[idx]}'
-		results['MRR'].append(output)
+# 	if not isinstance(topKs, (tuple, list)):
+# 		raise ValueError('topKs wrong, it should be tuple or list')
+	
+# 	pred_array = []
+# 	true_array = []
+# 	for u in y_true.keys():
+# 		pred_array.append(y_pred[u])
+# 		true_array.append(y_true[u])
+# 	ndcg_result = []
+# 	mrr_result = []
+# 	hit_result = []
+# 	precision_result = []
+# 	recall_result = []
+# 	for idx in range(len(topKs)):
+# 		ndcgs = 0
+# 		mrrs = 0
+# 		hits = 0
+# 		precisions = 0
+# 		recalls = 0
+# 		gts = 0
+# 		for i in range(len(true_array)):
+# 			if len(true_array[i]) != 0:
+# 				mrr_tmp = 0
+# 				mrr_flag = True
+# 				hit_tmp = 0
+# 				dcg_tmp = 0
+# 				idcg_tmp = 0
+# 				for j in range(topKs[idx]):
+# 					if pred_array[i][j] in true_array[i]:
+# 						hit_tmp += 1.
+# 						if mrr_flag:
+# 							mrr_flag = False
+# 							mrr_tmp = 1. / (1 + j)
+# 						dcg_tmp += 1. / (np.log2(j + 2))
+# 					if j < len(true_array[i]):
+# 						idcg_tmp += 1. / (np.log2(j + 2))
+# 				gts += len(true_array[i])
+# 				hits += hit_tmp
+# 				mrrs += mrr_tmp
+# 				recalls += hit_tmp / len(true_array[i])
+# 				precisions += hit_tmp / topKs[idx]
+# 				if idcg_tmp != 0:
+# 					ndcgs += dcg_tmp / idcg_tmp
+# 		hit_result.append(round(hits / gts, 4))
+# 		mrr_result.append(round(mrrs / len(pred_array), 4))
+# 		recall_result.append(round(recalls / len(pred_array), 4))
+# 		precision_result.append(round(precisions / len(pred_array), 4))
+# 		ndcg_result.append(round(ndcgs / len(pred_array), 4))
 
-		output = f'Recall@{topKs[idx]}: {recall_result[idx]}'
-		results['Recall'].append(output)
+# 	results = defaultdict(list)
+# 	for idx in range(len(topKs)):
 
-		output = f'Hit@{topKs[idx]}: {hit_result[idx]}'
-		results['Hit'].append(output)
+# 		output = f'NDCG@{topKs[idx]}: {ndcg_result[idx]}'
+# 		results['NDCG'].append(output)
 
-		output = f'Precision@{topKs[idx]}: {precision_result[idx]}'
-		results['Precision'].append(output)
-	return results
+# 		output = f'MRR@{topKs[idx]}: {mrr_result[idx]}'
+# 		results['MRR'].append(output)
+
+# 		output = f'Recall@{topKs[idx]}: {recall_result[idx]}'
+# 		results['Recall'].append(output)
+
+# 		output = f'Hit@{topKs[idx]}: {hit_result[idx]}'
+# 		results['Hit'].append(output)
+
+# 		output = f'Precision@{topKs[idx]}: {precision_result[idx]}'
+# 		results['Precision'].append(output)
+# 	return results
 
 def log_loss(y_true, y_pred):
 	score = y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred)

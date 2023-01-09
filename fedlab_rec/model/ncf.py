@@ -2,7 +2,7 @@ import torch
 
 class NCF(torch.nn.Module):
     def __init__(self, user_num, item_num, predictive_factor=32, 
-                 user_id_col="user_id", item_id_col="item_id", label_col="label"):
+                 user_id_col="user_id", item_id_col="item_id", label_col="rating"):
         super().__init__()
         self.user_id_col = user_id_col
         self.item_id_col = item_id_col

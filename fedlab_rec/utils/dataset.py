@@ -1,43 +1,36 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 import pandas as pd
 import random
 import numpy as np
 from torch.utils.data import Dataset, DataLoader, random_split
 from collections import defaultdict
 from tqdm import tqdm
+from sklearn.preprocessing import LabelEncoder
 
-def df_to_dict(data):
-    """
-    Convert the DataFrame to a dict type input that the network can accept
-    Args:
-        data (pd.DataFrame): datasets of type DataFrame
-    Returns:
-        The converted dict, which can be used directly into the input network
-    """
-    data_dict = data.to_dict('list')
-    for key in data.keys():
-        data_dict[key] = np.array(data_dict[key])
-    return data_dict
+def encode_column(df, col_name):
+    encoder = LabelEncoder()
+    df[col_name] = encoder.fit_transform(df[col_name])
+    return encoder
 
-class TorchDataset(Dataset):
-    def __init__(self, x):
+class DataFrameDataset(Dataset):
+    def __init__(self, df):
         super().__init__()
-        self.x = x
+        self.df = df
 
     def __getitem__(self, index):
-        return {k: v[index] for k, v in self.x.items()}
+        return {col: self.df[col].iloc[index] for col in self.df.columns}
 
     def __len__(self):
-        return len(list(self.x.values())[0])
+        return len(self.df)
+
+
     
-class FedDataset:
-    @abstractmethod
-    def get_dataloader(self, idx, mode='train'):
-        raise NotImplementedError()
+
 
 class RecDataset(FedDataset):
-    def __init__(self, df, num_clients, client_ids_list=None, batch_size=64,
-                split_ratio=(0.8, 0.1), user_col='user_id'):
+    def __init__(self, df, client_ids_list=None, 
+                 batch_size=64, split_ratio=(0.8, 0.1), 
+                 user_col='user_id'):
         self.num_clients = num_clients
         self.user_col = user_col
         uid = df[user_col].unique()

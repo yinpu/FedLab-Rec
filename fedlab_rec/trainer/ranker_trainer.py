@@ -3,6 +3,7 @@ import torch
 import tqdm
 from sklearn.metrics import roc_auc_score
 from ..utils.earlystop import EarlyStopper
+from ..utils.metric import hit_score
 
 
 class CTRTrainer(object):
@@ -60,22 +61,22 @@ class CTRTrainer(object):
 
     def train_one_epoch(self, data_loader, log_interval=10):
         self.model.train()
-        total_loss = 0
-        tk0 = tqdm.tqdm(data_loader, desc="train", smoothing=0, mininterval=1.0)
-        for i, data_dict in enumerate(tk0):
+        # total_loss = 0
+        # tk0 = tqdm.tqdm(data_loader, desc="train", smoothing=0, mininterval=1.0)
+        for i, data_dict in enumerate(data_loader):
             data_dict = {k: v.to(self.device) for k, v in data_dict.items()}  #tensor to GPU
             loss = self.model.cal_loss(data_dict)
             self.model.zero_grad()
             loss.backward()
             self.optimizer.step()
-            total_loss += loss.item()
-            if (i + 1) % log_interval == 0:
-                tk0.set_postfix(loss=total_loss / log_interval)
-                total_loss = 0
+            # total_loss += loss.item()
+            # if (i + 1) % log_interval == 0:
+            #     tk0.set_postfix(loss=total_loss / log_interval)
+            #     total_loss = 0
 
     def fit(self, train_dataloader, val_dataloader=None):
         for epoch_i in range(self.n_epoch):
-            print('epoch:', epoch_i)
+            #print('epoch:', epoch_i)
             self.train_one_epoch(train_dataloader)
             if self.scheduler is not None:
                 if epoch_i % self.scheduler.step_size == 0:
@@ -95,8 +96,8 @@ class CTRTrainer(object):
         self.model.eval()
         targets, predicts = list(), list()
         with torch.no_grad():
-            tk0 = tqdm.tqdm(data_loader, desc="validation", smoothing=0, mininterval=1.0)
-            for i, data_dict in enumerate(tk0):
+            #tk0 = tqdm.tqdm(data_loader, desc="validation", smoothing=0, mininterval=1.0)
+            for i, data_dict in enumerate(data_loader):
                 data_dict = {k: v.to(self.device) for k, v in data_dict.items()}
                 y_pred, y = self.model(data_dict)
                 targets.extend(y.tolist())
