@@ -15,9 +15,9 @@ class NCFPipeline:
         self.client = client
         self.server = server
         self.num_clients = num_clients
-        self.epoch_flag = [False]*self.num_clients
         
     def __call__(self):
+        self.epoch_flag = [False]*self.num_clients
         while self.server.if_stop is False:
             # server side
             sampled_clients = self.server.sample_clients()

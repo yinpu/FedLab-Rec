@@ -2,6 +2,7 @@ import os
 import torch
 import tqdm
 from sklearn.metrics import roc_auc_score
+from collections import defaultdict
 from ..utils.earlystop import EarlyStopper
 from ..utils.metric import hit_score
 
@@ -44,13 +45,14 @@ class CTRTrainer(object):
         if evaluate_fn is None:
             self.evaluate_fn = roc_auc_score  #default evaluate function
         self.n_epoch = n_epoch
-        self.device = device
+        self.device = torch.device(device)  #torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.earlystop_metric = earlystop_metric
         self.earlystop_patience = earlystop_patience
         self.earlystop_mode = earlystop_mode
     
     def setup(self, model):
         self.model = model
+        self.model.to(self.device)
         self.optimizer = self.optimizer_fn(self.model.parameters(), **self.optimizer_params)
         self.scheduler = None
         if self.scheduler_fn is not None:
@@ -94,14 +96,16 @@ class CTRTrainer(object):
 
     def evaluate(self, data_loader):
         self.model.eval()
-        targets, predicts = list(), list()
+        targets, predicts = defaultdict(list), defaultdict(list)
         with torch.no_grad():
             #tk0 = tqdm.tqdm(data_loader, desc="validation", smoothing=0, mininterval=1.0)
             for i, data_dict in enumerate(data_loader):
                 data_dict = {k: v.to(self.device) for k, v in data_dict.items()}
-                y_pred, y = self.model(data_dict)
-                targets.extend(y.tolist())
-                predicts.extend(y_pred.tolist())
+                x, y_pred, y = self.model(data_dict)
+                x, y_pred, y = x.tolist(), y_pred.tolist(), y.tolist()
+                for i in range(len(x)):
+                    targets[x[i]].append(y[i])
+                    predicts[x[i]].append(y_pred[i])
         return self.evaluate_fn(targets, predicts)
 
     def predict(self, data_loader):

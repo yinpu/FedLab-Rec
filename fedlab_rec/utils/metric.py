@@ -93,10 +93,25 @@ def precision_score(y_true, y_pred, topKs=None):
 	result = topk_metrics(y_true, y_pred, topKs)
 	return result['Precision']
 
+def topk_metrics(targets, predicts, topKs=None):
+    if topKs is None:
+        topKs = [10]
+    all_ndcgs = []
+    all_hrs = []
+    for x in targets.keys():
+        y_true = targets[x]
+        y_pred = predicts[x]
+        ndcgs, hrs = get_ndcgs_hrs(y_true, y_pred)
+        all_ndcgs.append(ndcgs)
+        all_hrs.append(hrs)
+    return np.mean(np.array(all_ndcgs), axis=0), np.mean(np.array(all_hrs), axis=0)
+    
 
-def topk_metrics(y_true, y_pred, topKs=None):
+
+
+def get_ndcgs_hrs(y_true, y_pred, topKs=None):
     # 获取预测值从大到小排序的索引
-    sorted_indices = np.argsort(np.array(y_pred))
+    sorted_indices = np.argsort(-np.array(y_pred))
     # 获取正样本的索引
     y_true = [idx for idx, score in enumerate(y_true) if score>0]
     # 设置默认的topKs

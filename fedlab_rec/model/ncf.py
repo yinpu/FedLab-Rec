@@ -30,7 +30,7 @@ class NCF(torch.nn.Module):
             y = data_dict[self.label_col].float()
         else:
             y = None
-        return pred, y
+        return user_id, pred, y
 
 
     def gmf_forward(self, user_id, item_id):
@@ -44,7 +44,7 @@ class NCF(torch.nn.Module):
         return self.mlp(torch.cat([user_emb, item_emb], dim=1))
 
     def cal_loss(self, data_dict):
-        pred, y = self.forward(data_dict)
+        _, pred, y = self.forward(data_dict)
         return self.loss_fct(pred, y)
 
 if __name__ == "__main__":
