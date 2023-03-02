@@ -47,6 +47,7 @@ class RecDataset(FedDataset):
     
     def generate_dataloader(self, df):
         self.client_dataloder_list = []
+        self.client_inter_id_list = []
         for i in range(self.num_clients):
             client_df = df[df[self.user_col].isin(self.client_ids_list[i])].reset_index(drop=True)
             client_dict = df_to_dict(client_df)

@@ -18,7 +18,7 @@ if __name__=="__main__":
     model = NCF(dataset.users_num, dataset.items_num)
     trainer = CTRTrainer(evaluate_fn=topk_metrics,
                         n_epoch=400,
-                        device="cuda:0")
+                        device="cpu")
     trainer.setup(model)
     # trainer.fit(train_loader)
     # print(trainer.evaluate(test_loader))
