@@ -26,6 +26,8 @@ class SerializationTool(object):
                 grad_dict[name] = deepcopy(param.data.cpu())
         return grad_dict
 
+    
+
     @staticmethod
     def deserialize_model(model: torch.nn.Module,
                           serialized_parameters_dict,
