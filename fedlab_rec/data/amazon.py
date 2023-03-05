@@ -7,25 +7,36 @@ import gzip
 import json
 import html
 import re
+import numpy as np
+from .extract_embedding import ExtractImageEmbedding, ExtractTextEmbedding
 
 class AmazonDataSet(FedDataset):
     def __init__(self, root_dir, dataset_name, pos_threshold=5, neg_train_rate=4, neg_test_rate=100, batch_size=256):
-        if os.path.exists(os.path.join(root_dir, 'train.data')) and\
-            os.path.exists(os.path.join(root_dir, 'test.data')):
-                self.train_df = pd.read_csv(os.path.join(root_dir, 'train.data'))
-                self.test_df = pd.read_csv(os.path.join(root_dir, 'test.data'))
+        self.dataset_name = dataset_name
+        if os.path.exists(os.path.join(root_dir, dataset_name, 'train.data')) and\
+            os.path.exists(os.path.join(root_dir, dataset_name, 'test.data')) and\
+            os.path.exists(os.path.join(root_dir, dataset_name, 'item_image_embedding')) and\
+            os.path.exists(os.path.join(root_dir, dataset_name, 'item_text_embedding')):
+                self.train_df = pd.read_csv(os.path.join(root_dir, dataset_name, 'train.data'))
+                self.test_df = pd.read_csv(os.path.join(root_dir, dataset_name, 'test.data'))
+                self.item_image_embedding = np.load(os.path.join(root_dir, dataset_name, 'item_image_embedding.npy'))
+                self.item_text_embedding = np.load(os.path.join(root_dir, dataset_name, 'item_text_embedding.npy'))
         else:
-            self.train_df, self.test_df = self.generate_train_test(root_dir, 
-                                                                   pos_threshold=pos_threshold, 
-                                                                   neg_train_rate=neg_train_rate, 
-                                                                   neg_test_rate=neg_test_rate)
+            self.train_df, self.test_df, self.item_embedding = self.generate_train_test(
+                                                                os.path.join(root_dir, dataset_name), 
+                                                                pos_threshold=pos_threshold, 
+                                                                neg_train_rate=neg_train_rate, 
+                                                                neg_test_rate=neg_test_rate)
         self.build_dataloader(batch_size)
             
     def generate_train_test(self, root_dir, pos_threshold=5, neg_train_rate=4, neg_test_rate=100):
-        # 读入dataframe
-        ratings_path = os.path.join(root_dir, 'u.data')
-        ratings_df = pd.read_csv(ratings_path, sep='\t', header=None, 
-                                 names=['user_id', 'item_id', 'rating', 'timestamp'])
+        meta_path = os.path.join(root_dir, f'meta_{self.dataset_name}.json.gz')
+        ratings_path = os.path.join(root_dir, f'{self.dataset_name}.csv')
+        # 读取rating文件和meta文件
+        ratings_df = self.load_ratings(ratings_path)
+        item_info = self.load_meta(meta_path) # 字典, key为item_id, value为对应的[文本，图片url]
+        # 去除不在item_info的item id
+        ratings_df = ratings_df[ratings_df['item_id'].isin(item_info.keys())]
         # 过滤交互次数少于pos_threshold的用户
         ratings_df = filter_df_by_count(ratings_df, count_col='user_id', threshold=pos_threshold)
         user_id_encoder = encode_column(ratings_df, 'user_id')
@@ -47,22 +58,31 @@ class AmazonDataSet(FedDataset):
             test_df[col] = test_df[col].astype(int)
         train_df.to_csv(os.path.join(root_dir, 'train.data'), index=False)
         test_df.to_csv(os.path.join(root_dir, 'test.data'), index=False)
+        # 对item_info进行编码
+        item_id_encoder_dict = dict(zip(item_id_encoder.classes_, item_id_encoder.transform(item_id_encoder.classes_)))
+        item_info = {item_id_encoder_dict.get(k): v for k, v in item_info.items() if k in item_id_encoder_dict}
+        # 使用Bert获取item的文本特征，使用resnet获取图片特征，并保存在npy中
+        item_text = {k:v[0] for k, v in item_info.items()}
+        item_image = {k:v[1] for k, v in item_info.items()}
+        text_embedding = ExtractTextEmbedding(item_text).get_embedding()
+        image_embedding = ExtractImageEmbedding(download_path=root_dir, image_dict=item_image)
         return train_df, test_df
     
-    def load_ratings(self, file_path, sample_ratio=1):
-        users, items, inters = set(), set(), set()
+    # 读取rating数据，返回一个dataframe
+    # 列名为"user_id"、"item_id"、"rating"、"timestamp"
+    def load_ratings(self, file_path):
+        ratings = []
         with open(file_path, 'r') as fp:
             for line in tqdm(fp, desc='Load ratings'):
                 try:
                     item, user, rating, time = line.strip().split(',')
-                    users.add(user)
-                    items.add(item)
-                    inters.add((user, item, float(rating), int(time)))
+                    ratings.append((str(user), str(item), float(rating), int(time)))
                 except ValueError:
                     print(line)
-        return users, items, inters
+        ratings_df = pd.DataFrame(ratings, columns=["user_id", "item_id", "rating", "timestamp"])
+        return ratings_df
     
-    def load_meta(file_path):
+    def load_meta(self, file_path):
         item_info = {}
         with gzip.open(file_path, 'r') as fp:
             for line in tqdm(fp, desc='Load metas'):
@@ -71,7 +91,7 @@ class AmazonDataSet(FedDataset):
                 text, image_url = '', ''
                 for meta_key in ['title', 'category', 'brand']:
                     if meta_key in data:
-                        meta_value = clean_text(data[meta_key])
+                        meta_value = self.clean_text(data[meta_key])
                         text += meta_value + ' '
                 if len(data['imageURLHighRes'])>0:
                     image_url = data['imageURLHighRes'][0].strip()
