@@ -45,7 +45,7 @@ class ExtractImageEmbedding:
         self.image_dict = image_dict
     
     def download_image(self, key, url):
-        os.system(f"curl -s -o {self.download_path}/{key}.jpg {url}")
+        os.system(f"curl -s -o {self.download_folder}/{key}.jpg {url}")
         
     def load_pretrain_model(self):
         self.device = 'cpu' #'cuda:0' if torch.cuda.is_available() else 'cpu'
@@ -103,6 +103,7 @@ class ExtractTextEmbedding:
         self.model.eval() # 设置模型为评估模式
     
     def get_embedding(self):
+        self.load_pretrain_model()
         dataset = TextDataset(self.text_dict)
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=False, num_workers=4)
         all_features = []
@@ -115,4 +116,5 @@ class ExtractTextEmbedding:
             all_features.append(features)
         all_features = np.concatenate(all_features, axis=0)
         assert all_features.shape[0]==len(self.text_dict)
+        print(f"text embedding shape: {all_features.shape}")
         return all_features

@@ -15,14 +15,15 @@ class AmazonDataSet(FedDataset):
         self.dataset_name = dataset_name
         if os.path.exists(os.path.join(root_dir, dataset_name, 'train.data')) and\
             os.path.exists(os.path.join(root_dir, dataset_name, 'test.data')) and\
-            os.path.exists(os.path.join(root_dir, dataset_name, 'item_image_embedding')) and\
-            os.path.exists(os.path.join(root_dir, dataset_name, 'item_text_embedding')):
+            os.path.exists(os.path.join(root_dir, dataset_name, 'item_image_embedding.npy')) and\
+            os.path.exists(os.path.join(root_dir, dataset_name, 'item_text_embedding.npy')):
                 self.train_df = pd.read_csv(os.path.join(root_dir, dataset_name, 'train.data'))
                 self.test_df = pd.read_csv(os.path.join(root_dir, dataset_name, 'test.data'))
                 self.item_image_embedding = np.load(os.path.join(root_dir, dataset_name, 'item_image_embedding.npy'))
                 self.item_text_embedding = np.load(os.path.join(root_dir, dataset_name, 'item_text_embedding.npy'))
         else:
-            self.train_df, self.test_df, self.item_embedding = self.generate_train_test(
+            self.train_df, self.test_df,\
+                self.item_text_embedding, self.item_image_embedding = self.generate_train_test(
                                                                 os.path.join(root_dir, dataset_name), 
                                                                 pos_threshold=pos_threshold, 
                                                                 neg_train_rate=neg_train_rate, 
@@ -65,8 +66,10 @@ class AmazonDataSet(FedDataset):
         item_text = {k:v[0] for k, v in item_info.items()}
         item_image = {k:v[1] for k, v in item_info.items()}
         text_embedding = ExtractTextEmbedding(item_text).get_embedding()
-        image_embedding = ExtractImageEmbedding(download_path=root_dir, image_dict=item_image)
-        return train_df, test_df
+        image_embedding = ExtractImageEmbedding(download_path=root_dir, image_dict=item_image).get_embedding()
+        np.save(os.path.join(root_dir, 'item_text_embedding.npy'), text_embedding)
+        np.save(os.path.join(root_dir, 'item_image_embedding.npy'), image_embedding)
+        return train_df, test_df, text_embedding, image_embedding
     
     # 读取rating数据，返回一个dataframe
     # 列名为"user_id"、"item_id"、"rating"、"timestamp"
